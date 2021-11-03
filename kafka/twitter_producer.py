@@ -1,13 +1,15 @@
 from tweepy import OAuthHandler,Stream
 import json
 
-from pykafka import KafkaClient
-
+from kafka import KafkaProducer
+from kafka.errors import KafkaError
+import time
 import sys
 from os import getenv
 from pathlib import Path
 from dotenv import load_dotenv
-load_dotenv(dotenv_path=Path('../', '.env'))
+# load_dotenv(dotenv_path=Path('../', '.env'))
+load_dotenv()
 
 CONSUMER_KEY = getenv('CONSUMER_KEY')
 CONSUMER_SECRET = getenv('CONSUMER_SECRET')
@@ -16,22 +18,37 @@ ACCESS_SECRET = getenv('ACCESS_SECRET')
 BROKER_LIST = ",".join(getenv('BROKER_LIST').split(";"))
 KAFKA_TOPIC = getenv('KAFKA_TOPIC')
 
-kafka_client = KafkaClient(BROKER_LIST)
-p = kafka_client.topics[bytes(KAFKA_TOPIC,'ascii')].get_producer()
+
+
+p = KafkaProducer(
+    bootstrap_servers=BROKER_LIST,
+    value_serializer= lambda m: json.dumps(m).encode('ascii'),
+    acks='all',
+    # compression_type = 'gzip',
+    batch_size = 32 * 1024,
+    linger_ms = 20,
+    )
 
 def on_send_success(msg):
-	print('yyyy')
+    print(
+        f"{msg.timestamp} | Topic: {msg.topic} | "
+        f"Partition: {msg.partition} | "
+        f"Offset: {msg.offset} | ")
+
 def on_send_error(excp):
-	print("nnn")
+    print(f'I am an errback {excp}')
+    # handle exception
+
 class TweetListener(Stream):
 	def on_status(self,status):				
 		try:
 			tweet=status._json
-			print(f"Created at: {tweet['created_at']} Tweet {tweet['id']}")
-			text = ",".join(list(tweet.keys()))
-			p.produce(bytes(text,'ascii'))
+			p.send(KAFKA_TOPIC, key=str(tweet['id']).encode('ascii'), value=json.dumps(tweet)).add_callback(on_send_success).add_errback(on_send_error)
 		except Exception as e:
 			print(e)
+		time.sleep(1)
+		# p.flush(timeout=100)
+
 	def on_error(self, status):
 		print(status)
 		return True
