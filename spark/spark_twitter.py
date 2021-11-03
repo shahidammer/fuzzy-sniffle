@@ -39,11 +39,26 @@ if __name__ == "__main__":
         StructField("text", StringType(), True),
         ])
 
+    structureSchema = StructType([
+        StructField('created_at', StringType(), True),
+        StructField('id', StringType(), True),
+        StructField('text', StringType(), True),
+        StructField('user', StructType([
+             StructField('name', StringType(), True),
+             StructField('id', StringType(), True),
+             StructField('description', StringType(), True),
+             StructField('verfied', BooleanType(), True),
+             StructField('followers_count', IntegerType(), True),
+             StructField('statuses_count', IntegerType(), True)
+             ])),
+
+         ])
+
 
 
     df = df.selectExpr("CAST(value AS STRING)")
 
-    tweets = df.select(from_json(col("value").cast("string"), tweet_schema).alias("tweets")).select("tweets.*")
+    tweets = df.select(from_json(col("value").cast("string"), structureSchema).alias("tweets")).select("tweets.*")
     tweets.printSchema()
 
     query = tweets.writeStream.outputMode("append").format("console").start()

@@ -43,7 +43,7 @@ class TweetListener(Stream):
 	def on_status(self,status):				
 		try:
 			tweet=status._json
-			p.send(KAFKA_TOPIC, key=str(tweet['id']).encode('ascii'), value=json.dumps(tweet)).add_callback(on_send_success).add_errback(on_send_error)
+			p.send(KAFKA_TOPIC, key=str(tweet['id']).encode('ascii'), value=tweet).add_callback(on_send_success).add_errback(on_send_error)
 		except Exception as e:
 			print(e)
 		time.sleep(1)
