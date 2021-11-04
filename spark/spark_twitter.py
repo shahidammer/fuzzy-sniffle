@@ -1,3 +1,6 @@
+# PYSPARK_PYTHON=python spark-submit --packages org.apache.spark:spark-sql-kafka-0-10_2.12:3.2.0 spark/spark_twitter.py 
+
+
 from pyspark.sql import SparkSession
 from pyspark.sql.functions import *
 from pyspark.sql.types import *
@@ -23,7 +26,9 @@ if __name__ == "__main__":
         .appName("PySpark Structured Streaming with Kafka") \
         .master("local[*]") \
         .getOrCreate()
-    print("PySpark Structured Streaming with Kafka Application Started …")
+    
+    print("PySpark Structured Streaming with Kafka Application Started")
+    
     # Construct a streaming DataFrame that reads from testtopic
     df = spark \
         .readStream \
@@ -32,12 +37,7 @@ if __name__ == "__main__":
         .option("subscribe", KAFKA_TOPIC) \
         .option("startingOffsets", "earliest") \
         .load()
-
-    tweet_schema = StructType([
-        StructField("created_at", StringType(), True),
-        StructField("id", StringType(), True),
-        StructField("text", StringType(), True),
-        ])
+    df = df.selectExpr("CAST(value AS STRING)")
 
     structureSchema = StructType([
         StructField('created_at', StringType(), True),
@@ -49,36 +49,33 @@ if __name__ == "__main__":
              StructField('description', StringType(), True),
              StructField('verfied', BooleanType(), True),
              StructField('followers_count', IntegerType(), True),
-             StructField('statuses_count', IntegerType(), True)
+             StructField('following', IntegerType(), True),
+             StructField('statuses_count', IntegerType(), True),
+             StructField('created_at', StringType(), True),
+             StructField('time_zone', StringType(), True),
+             StructField('profile_image_url', StringType(), True),
              ])),
-
-         ])
-
-
-
-    df = df.selectExpr("CAST(value AS STRING)")
+        StructField('retweeted_status', StructType([
+            StructField('id', StringType(), True),
+            StructField('text', StringType(), True),
+            StructField('user', StructType([
+                StructField('name', StringType(), True),
+                StructField('id', StringType(), True),
+                StructField('description', StringType(), True),
+                StructField('verfied', BooleanType(), True),
+                StructField('followers_count', IntegerType(), True),
+                StructField('following', IntegerType(), True),
+                StructField('statuses_count', IntegerType(), True),
+                StructField('created_at', StringType(), True),
+                StructField('time_zone', StringType(), True),
+                StructField('profile_image_url', StringType(), True),
+                ])),
+         ])),
+    ])
 
     tweets = df.select(from_json(col("value").cast("string"), structureSchema).alias("tweets")).select("tweets.*")
     tweets.printSchema()
 
-    query = tweets.writeStream.outputMode("append").format("console").start()
-    query.awaitTermination()
+    tweets.writeStream.outputMode("append").format("console").start().awaitTermination()
+    
 
-
-    # query2 = tweets.writeStream.format("console").start()
-    # query2.awaitTermination()
-
-    # structureSchema = StructType([
-    #     StructField('name', StructType([
-    #          StructField('firstname', StringType(), True),
-    #          StructField('middlename', StringType(), True),
-    #          StructField('lastname', StringType(), True)
-    #          ])),
-    #      StructField('id', StringType(), True),
-    #      StructField('gender', StringType(), True),
-    #      StructField('salary', IntegerType(), True)
-    #      ])
-
-
-
-# PYSPARK_PYTHON=python spark-submit --packages org.apache.spark:spark-sql-kafka-0-10_2.12:3.2.0 spark_twitter.py 
