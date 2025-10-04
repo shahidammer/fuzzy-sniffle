@@ -1,0 +1,15 @@
+{
+    "python.defaultInterpreterPath": "~/env/bin/python",
+    "python.terminal.activateEnvironment": true,
+    "terminal.integrated.profiles.osx": {
+        "bash": {
+            "path": "bash",
+            "args": ["-l"]
+        },
+        "zsh": {
+            "path": "zsh",
+            "args": ["-l"]
+        }
+    },
+    "terminal.integrated.defaultProfile.osx": "zsh"
+}
